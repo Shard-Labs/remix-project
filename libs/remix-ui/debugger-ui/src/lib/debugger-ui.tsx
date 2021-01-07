@@ -44,19 +44,18 @@ export const DebuggerUI = (props: DebuggerUIProps) => {
 
   useEffect(() => {
     const setEditor = () => {
-      const editor = debuggerModule.editor
-
-      editor.event.register('breakpointCleared', (fileName, row) => {
+      
+      debuggerModule.onBreakpointCleared((fileName, row) => {
         if (state.debugger) state.debugger.breakPointManager.remove({fileName: fileName, row: row})
       })
   
-      editor.event.register('breakpointAdded', (fileName, row) => {
+      debuggerModule.onBreakpointAdded((fileName, row) => {
         if (state.debugger) {
           state.debugger.breakPointManager.add({fileName: fileName, row: row})
         }
       })
   
-      editor.event.register('contentChanged', () => {
+      debuggerModule.onEditorContentChanged(() => {
         unLoad()
       })
     }

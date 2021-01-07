@@ -1,3 +1,4 @@
+import Web3 from 'web3'
 import toaster from '../ui/tooltip'
 import { DebuggerUI } from '@remix-ui/debugger-ui' // eslint-disable-line
 import { ViewPlugin } from '@remixproject/engine-web'
@@ -22,15 +23,32 @@ const profile = {
 }
 
 class DebuggerTab extends ViewPlugin {
-  constructor (blockchain, editor, offsetToLineColumnConverter) {
+  constructor () {
     super(profile)
     this.el = null
-    this.editor = editor
-    this.offsetToLineColumnConverter = offsetToLineColumnConverter
-    this.blockchain = blockchain
     this.debugHash = null
     this.removeHighlights = false
     this.debugHashRequest = 0
+
+    const self = this
+    this.web3Provider = {
+      sendAsync(payload, callback) {
+        self.call('web3Provider', 'sendAsync', payload)
+          .then(result => callback(null, result))
+          .catch(e => callback(e))
+      }
+    }
+    this._web3 = new Web3(this.web3Provider)
+
+    this.offsetToLineColumnConverter = {
+      async offsetToLineColumn (rawLocation, file, sources, asts) {
+        return await self.call('offsetToLineColumnConverter', 'offsetToLineColumn', rawLocation, file, sources, asts)
+      }
+    }
+  }
+
+  web3 () {
+    return this._web3
   }
 
   render () {
@@ -102,20 +120,32 @@ class DebuggerTab extends ViewPlugin {
     this.renderComponent()
   }
 
-  getDebugWeb3 () {
-    return new Promise((resolve, reject) => {
-      this.blockchain.detectNetwork((error, network) => {
-        let web3
-        if (error || !network) {
-          web3 = remixDebug.init.web3DebugNode(this.blockchain.web3())
-        } else {
-          const webDebugNode = remixDebug.init.web3DebugNode(network.name)
-          web3 = !webDebugNode ? this.blockchain.web3() : webDebugNode
-        }
-        remixDebug.init.extendWeb3(web3)
-        resolve(web3)
-      })
-    })
+  onBreakpointCleared (listener) {
+    this.on('editor', 'breakpointCleared', listener)
+  }
+
+  onBreakpointAdded (listener) {
+    this.on('editor', 'breakpointAdded', listener)
+  }
+
+  onEditorContentChanged (listener) {
+    this.on('editor', 'contentChanged', listener)    
+  }
+
+  async getDebugWeb3 () {
+    let web3
+    let network
+    try {
+      network = await this.call('network', 'detectNetwork')    
+    } catch (e) {
+      web3 = this.web3()
+    }
+    if (!web3) {
+      const webDebugNode = remixDebug.init.web3DebugNode(network.name)
+      web3 = !webDebugNode ? this.web3() : webDebugNode
+    }
+    remixDebug.init.extendWeb3(web3)
+    return web3
   }
 
   async getTrace (hash) {
@@ -138,15 +168,11 @@ class DebuggerTab extends ViewPlugin {
     return await debug.debugger.traceManager.getTrace(hash)
   }
 
-  fetchContractAndCompile (address, receipt) {
+  async fetchContractAndCompile (address, receipt) {
     const target = (address && remixDebug.traceHelper.isContractCreation(address)) ? receipt.contractAddress : address
     const targetAddress = target || receipt.contractAddress || receipt.to
-    return this.call('fetchAndCompile', 'resolve', targetAddress, 'browser/.debug', this.blockchain.web3())
+    return await this.call('fetchAndCompile', 'resolve', targetAddress, 'browser/.debug', this.web3())
   }
-
-  // debugger () {
-  //   return this.debuggerUI
-  // }
 }
 
 module.exports = DebuggerTab

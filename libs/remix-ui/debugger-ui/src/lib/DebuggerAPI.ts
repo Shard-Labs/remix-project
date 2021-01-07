@@ -5,13 +5,6 @@ export interface DebuggerUIProps {
     debuggerAPI: DebuggerAPI  
 }
 
-interface EditorEvent {
-    event: { 
-        register(eventName: 'breakpointCleared' | 'breakpointAdded' | 'contentChanged', 
-        callback: (fileName: string, row: string | number) => void) 
-    }
-}
-
 interface LineColumnLocation {
     start: {
         line: number, column: number
@@ -49,12 +42,18 @@ interface TransactionReceipt {
     contractAddress: string | null    
   }
 
+type onBreakpointClearedListener = (params: string, row: number) => void
+type onBreakpointAddedListener = (params: string, row: number) => void
+type onEditorContentChanged = () => void
+
 export interface DebuggerAPI {
     offsetToLineColumnConverter: { offsetToLineColumn: (sourceLocation: RawLocation, file: number, contents: Sources, asts: Asts) => LineColumnLocation }
     debugHash: string
     debugHashRequest: string
     removeHighlights: boolean
-    editor: EditorEvent
+    onBreakpointCleared: (listener: onBreakpointClearedListener) => void
+    onBreakpointAdded: (listener: onBreakpointAddedListener) => void
+    onEditorContentChanged: (listener: onEditorContentChanged) => void
     discardHighlight: () => void
     highlight: (lineColumnPos: LineColumnLocation, path: string) => void
     fetchContractAndCompile: (address: string, currentReceipt: TransactionReceipt) => CompilationOutput
