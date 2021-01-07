@@ -16,8 +16,8 @@ class SettingsUI {
     this._components = {}
 
     this.blockchain.event.register('transactionExecuted', (error, from, to, data, lookupOnly, txResult) => {
+      if (!lookupOnly) this.el.querySelector('#value').value = 0
       if (error) return
-      if (!lookupOnly) this.el.querySelector('#value').value = '0'
       this.updateAccountBalances()
     })
     this._components = {
@@ -51,6 +51,28 @@ class SettingsUI {
         }
       })
     })
+  }
+
+  validateInputKey (e) {
+    // preventing not numeric keys
+    // preventing 000 case
+    if (!helper.isNumeric(e.key) ||
+      (e.key === '0' && !parseInt(this.el.querySelector('#value').value) && this.el.querySelector('#value').value.length > 0)) {
+      e.preventDefault()
+      e.stopImmediatePropagation()
+    }
+  }
+
+  validateValue () {
+    const valueEl = this.el.querySelector('#value')
+    valueEl.value = parseInt(valueEl.value)
+    // assign 0 if given value is
+    // - empty
+    // - not valid (for ex 4345-54)
+    // - contains only '0's (for ex 0000) copy past or edit
+    if (!valueEl.value) valueEl.value = 0
+    // if giveen value is negative(possible with copy-pasting) set to 0
+    if (valueEl.value < 0) valueEl.value = 0
   }
 
   render () {
@@ -115,9 +137,21 @@ class SettingsUI {
 
     const valueEl = yo`
       <div class="${css.crow}">
-        <label class="${css.settingsLabel}">Value</label>
+        <label class="${css.settingsLabel}" data-id="remixDRValueLabel">Value</label>
         <div class="${css.gasValueContainer}">
-          <input type="text" class="form-control ${css.gasNval} ${css.col2}" id="value" value="0" title="Enter the value and choose the unit">
+          <input
+            type="number"
+            min="0"
+            pattern="^[0-9]"
+            step="1"
+            class="form-control ${css.gasNval} ${css.col2}"
+            id="value"
+            data-id="dandrValue"
+            value="0"
+            title="Enter the value and choose the unit"
+            onkeypress=${(e) => this.validateInputKey(e)}
+            onchange=${() => this.validateValue()}
+          >
           <select name="unit" class="form-control p-1 ${css.gasNvalUnit} ${css.col2_2} custom-select" id="unit">
             <option data-unit="wei">wei</option>
             <option data-unit="gwei">gwei</option>

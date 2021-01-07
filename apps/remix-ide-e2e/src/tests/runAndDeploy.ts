@@ -1,4 +1,5 @@
 'use strict'
+import { doesNotThrow } from 'assert'
 import { NightwatchBrowser } from "nightwatch"
 import init from '../helpers/init'
 import sauce from './sauce'
@@ -21,6 +22,14 @@ module.exports = {
     .clickLaunchIcon('udapp')
     .waitForElementPresent('*[data-id="sidePanelSwapitTitle"]')
     .assert.containsText('*[data-id="sidePanelSwapitTitle"]', 'DEPLOY & RUN TRANSACTIONS')
+  },
+
+  'Should load run and deploy tab and check value validation': function (browser: NightwatchBrowser) {
+    browser.waitForElementPresent('*[data-id="remixIdeSidePanel"]')
+    .assert.containsText('*[data-id="sidePanelSwapitTitle"]', 'DEPLOY & RUN TRANSACTIONS')
+    .validateValueInput('#value', '0000', '0')
+    .validateValueInput('#value', '', '0')
+    .validateValueInput('#value', 'dragon', '0')
   },
 
   'Should sign message using account key': function (browser: NightwatchBrowser) {
